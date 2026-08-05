@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import time
 from datetime import datetime, timedelta
@@ -56,6 +57,12 @@ CONTENT
 
 Output format: Markdown.
 """
+
+
+def strip_html(text: str) -> str:
+    clean = re.sub(r'<[^>]+>', '', text)
+    clean = re.sub(r'\s+', ' ', clean)
+    return clean.strip()
 
 
 def has_excessive_repetition(text: str, threshold: int = 3) -> bool:
@@ -139,10 +146,12 @@ def fetch_candidates() -> list[dict]:
 
         for entry in feed.entries:
             title = entry.get("title", "")
+            raw_summary = entry.get("summary", "")
+            summary = strip_html(raw_summary)
             if is_relevant(entry) and title not in recent:
                 candidates.append({
                     "title": title,
-                    "summary": entry.get("summary", ""),
+                    "summary": summary,
                     "link": entry.get("link", ""),
                 })
 
@@ -181,7 +190,7 @@ def generate_blog(title: str, summary: str, link: str) -> str:
         blog_text = (
             f"# {title}\n\n"
             f"We couldn't generate the full write-up this time — the AI model was "
-            f"unavailable or rate-limited. Here's the original summary:\n\n"
+            f"unavailable or rate-limited. Here's what the story is about:\n\n"
             f"{summary}"
         )
 
