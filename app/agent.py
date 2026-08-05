@@ -58,6 +58,16 @@ Output format: Markdown.
 """
 
 
+def has_excessive_repetition(text: str, threshold: int = 3) -> bool:
+    lines = [l.strip() for l in text.split('\n') if l.strip()]
+    seen = {}
+    for line in lines:
+        seen[line] = seen.get(line, 0) + 1
+        if seen[line] >= threshold:
+            return True
+    return False
+
+
 def call_openrouter(prompt: str, system_message: str = None, retries: int = 3) -> str:
     messages = []
     if system_message:
@@ -69,15 +79,18 @@ def call_openrouter(prompt: str, system_message: str = None, retries: int = 3) -
             response = client.chat.completions.create(
                 model=OPENROUTER_MODEL,
                 messages=messages,
-                temperature=0.8,
+                temperature=0.75,
                 top_p=0.9,
-                presence_penalty=0.2,
-                frequency_penalty=0.2,
+                presence_penalty=0.4,
+                frequency_penalty=0.4,
             )
             content = response.choices[0].message.content
-            if content and content.strip():
+
+            if content and content.strip() and not has_excessive_repetition(content):
                 return content
-            print(f"[WARN] Empty response on attempt {attempt}/{retries}")
+
+            reason = "empty" if not content or not content.strip() else "repetitive"
+            print(f"[WARN] Response rejected ({reason}) on attempt {attempt}/{retries}")
         except Exception as e:
             print(f"[ERROR] OpenRouter call failed (attempt {attempt}/{retries}): {e}")
 
