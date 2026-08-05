@@ -73,18 +73,11 @@ def call_openrouter(prompt: str, system_message: str = None, retries: int = 3) -
                 top_p=0.9,
                 presence_penalty=0.2,
                 frequency_penalty=0.2,
-                max_tokens=2500,
             )
-            choice = response.choices[0]
-            content = choice.message.content
-
-            # Reject if too short to be a real blog (just a title/heading)
-            if content and len(content.strip()) > 400:
+            content = response.choices[0].message.content
+            if content and content.strip():
                 return content
-
-            print(f"[WARN] Response too short on attempt {attempt}/{retries} "
-                  f"(len={len(content) if content else 0}, "
-                  f"finish_reason={choice.finish_reason})")
+            print(f"[WARN] Empty response on attempt {attempt}/{retries}")
         except Exception as e:
             print(f"[ERROR] OpenRouter call failed (attempt {attempt}/{retries}): {e}")
 
