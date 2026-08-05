@@ -1,0 +1,8 @@
+feedparser
+python-dotenv
+python-slugify
+requests
+google-genai
+openai
+fastapi
+uvicorn
