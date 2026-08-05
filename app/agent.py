@@ -30,30 +30,25 @@ News to base this on:
 Title: {title}
 Summary: {summary}
 
-Write a full blog post following these rules:
+You MUST follow this exact article structure from top to bottom:
 
-STRUCTURE
-- 1200-1500 words
-- Catchy H1 title, your own words, not the source title
-- Open with a hook: a question, a blunt claim, a scene, or a mildly sarcastic observation — never "In today's news..." or "Recently, ..."
-- 3-4 sections with subheadings (##)
-- One "Key Takeaways" list near the end (3-4 bullets)
-- Short "What Comes Next" closing thought
+1. Catchy H1 Title (# Title)
+2. Hook & Opening (No introductory fluff, jump straight into the story)
+3. 3-4 Main Sections with subheadings (## Subheading Name)
+4. A dedicated section with heading "## Key Takeaways" containing 3-4 bullet points
+5. A dedicated closing section with heading "## What Comes Next" containing a personal, forward-looking thought
 
-VOICE — this is the important part
-- Vary sentence length aggressively. Follow a 22-word sentence with a 4-word one. Real people don't write in uniform rhythm.
-- Use contractions throughout (it's, don't, you'd, that's) — never "it is," "do not," etc.
-- Drop in at least 2-3 small imperfections real writers have: a sentence starting with "And" or "But," a rhetorical question, a mid-thought aside in em dashes, one deliberate sentence fragment for emphasis.
-- Include one specific, concrete comparison or analogy that isn't generic (not "like a double-edged sword" — something sharper and more particular to robotics/engineering).
-- Write at least one paragraph of genuine opinion where you take a side, hedge like a real person ("I could be wrong here, but..."), or admit uncertainty.
-- Avoid AI tics completely: no "In conclusion," "Moreover," "Furthermore," "It's worth noting," "In today's fast-paced world," "game-changer," "revolutionize," "delve into," "navigate," "landscape," "underscore."
-- Avoid rule-of-three lists inside sentences ("faster, cheaper, and more efficient") — real writers usually pick one or two things, not three balanced items.
-- Reference something concrete and slightly tangential (a past failed product, an old prediction that didn't pan out, a personal pet peeve about the industry) to ground it in lived perspective, not just the summary.
-
-CONTENT
-- Explain the news in your own words — do not paraphrase the summary sentence-by-sentence
-- Add outside context: history, competitors, past failures/successes in similar attempts
-- Do not mention you are an AI
+STRICT VOICE & WRITING RULES:
+- Word Count: 1200-1500 words.
+- Vary sentence length aggressively. Follow a 22-word sentence with a 4-word one.
+- Use contractions throughout (it's, don't, you'd, that's).
+- Drop in 2-3 small imperfections: start a sentence with "And" or "But", use rhetorical questions or mid-thought em-dashes.
+- Include one specific, concrete engineering comparison or analogy.
+- Include at least one paragraph of genuine personal opinion where you take a side or admit uncertainty.
+- Avoid AI buzzwords completely: "In conclusion", "Moreover", "Furthermore", "It's worth noting", "game-changer", "revolutionize", "delve", "navigate", "landscape".
+- Avoid rule-of-three lists inside sentences ("faster, cheaper, and more efficient").
+- Reference outside context: past industry failures, competitors, or old predictions.
+- Do NOT mention you are an AI.
 
 Output format: Markdown.
 """
@@ -181,7 +176,7 @@ def pick_most_important(candidates: list[dict]) -> dict:
 
 
 def generate_blog(title: str, summary: str, link: str) -> str:
-    system_instruction = "You write like an opinionated, informal tech blogger who hates PR fluff and corporate buzzwords."
+    system_instruction = "You are a human tech journalist who strictly follows formatting structures and writes conversational, non-robotic articles."
     prompt = PROMPT_TEMPLATE.format(title=title, summary=summary)
 
     blog_text = call_openrouter(prompt, system_message=system_instruction)
