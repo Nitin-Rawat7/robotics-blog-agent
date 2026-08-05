@@ -32,7 +32,7 @@ Summary: {summary}
 Write a full blog post following these rules:
 
 STRUCTURE
-- 500-1000 words
+- 1200-1500 words
 - Catchy H1 title, your own words, not the source title
 - Open with a hook: a question, a blunt claim, a scene, or a mildly sarcastic observation — never "In today's news..." or "Recently, ..."
 - 3-4 sections with subheadings (##)
@@ -188,6 +188,7 @@ def generate_blog(title: str, summary: str, link: str) -> str:
     blog_text += f"\n\n---\n*Source: [{title}]({link})*"
     return blog_text
 
+
 def save_blog(title: str, content: str) -> str:
     os.makedirs(BLOG_DIR, exist_ok=True)
     slug = slugify(title)[:60]
@@ -226,4 +227,4 @@ def run() -> dict:
 
 
 if __name__ == "__main__":
-    run()
+    run(
