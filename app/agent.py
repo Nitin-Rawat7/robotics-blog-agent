@@ -19,6 +19,12 @@ SELECTOR_PROMPT = """Below is a list of robotics news headlines with summaries.
 
 Pick the SINGLE most important, most newsworthy, most demanding-of-attention story — the one a serious robotics industry follower would care about most today. Ignore anything that is not core robotics/AI-hardware news (skip general AI, food-tech, unrelated software stories even if they mention "robot" in passing).
 
+RECENTLY COVERED TOPICS (DO NOT PICK ANYTHING SIMILAR):
+{recent_topics}
+
+CANDIDATE STORIES:
+{numbered_list}
+
 Respond with ONLY the number of your pick. No explanation.
 
 {numbered_list}
@@ -112,18 +118,22 @@ def load_recent() -> list[str]:
         return []
     with open(RECENT_LOG, "r", encoding="utf-8") as f:
         data = json.load(f)
-    cutoff = datetime.utcnow() - timedelta(hours=24)
-    return [d["title"] for d in data if datetime.fromisoformat(d["time"]) > cutoff]
-
+    # Keep 7 days of history instead of 24 hours
+    cutoff = datetime.utcnow() - timedelta(days=7)
+    return [d["slug"] for d in data if datetime.fromisoformat(d["time"]) > cutoff]
 
 def save_recent(title: str) -> None:
     data = []
     if os.path.exists(RECENT_LOG):
         with open(RECENT_LOG, "r", encoding="utf-8") as f:
             data = json.load(f)
-    data.append({"title": title, "time": datetime.utcnow().isoformat()})
-    cutoff = datetime.utcnow() - timedelta(hours=24)
+    
+    slug = slugify(title)[:60]
+    data.append({"title": title, "slug": slug, "time": datetime.utcnow().isoformat()})
+    
+    cutoff = datetime.utcnow() - timedelta(days=7)
     data = [d for d in data if datetime.fromisoformat(d["time"]) > cutoff]
+    
     with open(RECENT_LOG, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 

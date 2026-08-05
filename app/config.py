@@ -30,4 +30,4 @@ KEYWORDS = [
 ]
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_MODEL = "inclusionai/ling-3.0-flash:free"
+OPENROUTER_MODEL = "Poolside: Laguna S 2.1 (free)"
