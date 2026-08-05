@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from datetime import datetime, timedelta
 import feedparser
 from slugify import slugify
@@ -57,26 +58,33 @@ Output format: Markdown.
 """
 
 
-def call_openrouter(prompt: str, system_message: str = None) -> str:
+def call_openrouter(prompt: str, system_message: str = None, retries: int = 3) -> str:
     messages = []
     if system_message:
         messages.append({"role": "system", "content": system_message})
     messages.append({"role": "user", "content": prompt})
 
-    try:
-        response = client.chat.completions.create(
-            model=OPENROUTER_MODEL,
-            messages=messages,
-            temperature=0.8,
-            top_p=0.9,
-            presence_penalty=0.2,
-            frequency_penalty=0.2,
-        )
-        content = response.choices[0].message.content
-        return content if content is not None else ""
-    except Exception as e:
-        print(f"[ERROR] OpenRouter API call failed: {e}")
-        return ""
+    for attempt in range(1, retries + 1):
+        try:
+            response = client.chat.completions.create(
+                model=OPENROUTER_MODEL,
+                messages=messages,
+                temperature=0.8,
+                top_p=0.9,
+                presence_penalty=0.2,
+                frequency_penalty=0.2,
+            )
+            content = response.choices[0].message.content
+            if content and content.strip():
+                return content
+            print(f"[WARN] Empty response on attempt {attempt}/{retries}")
+        except Exception as e:
+            print(f"[ERROR] OpenRouter call failed (attempt {attempt}/{retries}): {e}")
+
+        if attempt < retries:
+            time.sleep(3)
+
+    return ""
 
 
 def is_relevant(entry) -> bool:
@@ -157,11 +165,15 @@ def generate_blog(title: str, summary: str, link: str) -> str:
     blog_text = call_openrouter(prompt, system_message=system_instruction)
 
     if not blog_text:
-        blog_text = f"# {title}\n\nUnable to generate blog post at this time."
+        blog_text = (
+            f"# {title}\n\n"
+            f"We couldn't generate the full write-up this time — the AI model was "
+            f"unavailable or rate-limited. Here's the original summary:\n\n"
+            f"{summary}"
+        )
 
     blog_text += f"\n\n---\n*Source: [{title}]({link})*"
     return blog_text
-
 
 def save_blog(title: str, content: str) -> str:
     os.makedirs(BLOG_DIR, exist_ok=True)
