@@ -6,10 +6,18 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "https://robotics-blog-agent.vercel.app",
+        "http://localhost:3000",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+def root():
+    return {"message": "Robotics Blog Agent API is running. Use POST /generate-blog"}
 
 
 @app.post("/generate-blog")
