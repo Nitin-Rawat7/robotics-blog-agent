@@ -1,5 +1,4 @@
 import os
-import re
 import random
 import feedparser
 from slugify import slugify
@@ -11,45 +10,49 @@ client = OpenAI(
     api_key=OPENROUTER_API_KEY,
 )
 
-AUTHOR_NAME = "Robotic Sir"
+PROMPT_TEMPLATE = """You are writing a short, clear, tutorial-style blog post covering 3 separate robotics news stories, explaining each in simple, educational terms — the way a knowledgeable person explains something to someone curious but new to the topic.
 
-PROMPT_TEMPLATE = """You are writing a short, clear, tutorial-style blog post for a robotics blog, explaining a piece of news in simple, educational terms — the way a knowledgeable person explains a concept to someone curious but new to the topic.
+Here are the 3 stories to cover:
 
-News to base this on:
-Title: {title}
-Summary: {summary}
+Story 1:
+Title: {title1}
+Summary: {summary1}
+
+Story 2:
+Title: {title2}
+Summary: {summary2}
+
+Story 3:
+Title: {title3}
+Summary: {summary3}
 
 Follow this EXACT structure:
 
-# [Your own catchy title, not the source title]
+# [One overall catchy title covering all 3 stories, your own words]
 
-## Introduction
-2-3 simple sentences introducing the topic and why it matters right now, tied to this news.
+Write a brief 1-2 sentence intro line for the whole post.
 
-## How Does It Work?
-Explain the core idea/technology in plain, simple language. If relevant, include a short text-based flow diagram in a code block, like this format:
+## [Your own short heading for Story 1]
+50-100 words explaining this story in plain, simple language, in your own words.
 
-```text
-Step One → Step Two → Step Three → Result
-```
+## [Your own short heading for Story 2]
+50-100 words explaining this story in plain, simple language, in your own words.
 
-Follow with 1-2 sentences giving a concrete real-world example.
+## [Your own short heading for Story 3]
+50-100 words explaining this story in plain, simple language, in your own words.
 
-## Why Is It Important?
-A short intro sentence, then a bullet list of 4-5 concrete points (short phrases, not full paragraphs) explaining why this matters.
-
-## The Future
-1 short paragraph (2-3 sentences) about where this technology/trend is heading next.
+## Why It Matters
+A short intro sentence, then a bullet list of 3-4 concrete points connecting these stories to the bigger picture in robotics.
 
 ## Conclusion
-1-2 sentences wrapping up the core idea simply and clearly.
+1-2 sentences wrapping up simply and clearly.
 
 RULES:
-- Keep total length around 300-450 words — short, clear, easy to read, NOT a long-form essay
 - Simple vocabulary — write for a curious beginner, not an industry expert
 - Plain, friendly tone — like a helpful tutorial, not a hype-filled press release
+- Each story section must stay strictly within 50-100 words
 - No AI buzzwords: skip "game-changer," "revolutionize," "delve into," "landscape," "moreover," "furthermore," "in conclusion," "it's worth noting"
-- Do NOT copy sentences directly from the summary — explain everything in your own words
+- Do NOT copy sentences directly from the summaries — explain everything in your own words
 - Do NOT mention you are an AI
 
 Output format: Markdown, following the exact section structure above.
@@ -61,7 +64,7 @@ def is_relevant(entry) -> bool:
     return any(k.lower() in text for k in KEYWORDS)
 
 
-def fetch_one_article() -> dict | None:
+def fetch_three_articles() -> list[dict]:
     candidates = []
 
     for url in RSS_SOURCES:
@@ -79,14 +82,18 @@ def fetch_one_article() -> dict | None:
                     "link": entry.get("link", ""),
                 })
 
-    if not candidates:
-        return None
+    if len(candidates) < 3:
+        return candidates
 
-    return random.choice(candidates)
+    return random.sample(candidates, 3)
 
 
-def generate_blog(title: str, summary: str) -> str:
-    prompt = PROMPT_TEMPLATE.format(title=title, summary=summary)
+def generate_blog(articles: list[dict]) -> str:
+    prompt = PROMPT_TEMPLATE.format(
+        title1=articles[0]["title"], summary1=articles[0]["summary"],
+        title2=articles[1]["title"], summary2=articles[1]["summary"],
+        title3=articles[2]["title"], summary3=articles[2]["summary"],
+    )
     try:
         response = client.chat.completions.create(
             model=OPENROUTER_MODEL,
@@ -99,15 +106,9 @@ def generate_blog(title: str, summary: str) -> str:
         return ""
 
 
-def calculate_reading_time(text: str) -> int:
-    word_count = len(text.split())
-    minutes = max(1, round(word_count / 200))
-    return minutes
-
-
-def extract_tags(text: str, title: str) -> list[str]:
+def extract_tags(text: str) -> list[str]:
     base_tags = ["Robotics", "AI", "Technology"]
-    text_lower = (title + " " + text).lower()
+    text_lower = text.lower()
 
     tag_map = {
         "Drones": ["drone", "uav", "aerial"],
@@ -124,23 +125,10 @@ def extract_tags(text: str, title: str) -> list[str]:
     return list(dict.fromkeys(base_tags))[:5]
 
 
-def add_metadata(blog_text: str, title: str) -> str:
-    reading_time = calculate_reading_time(blog_text)
-    tags = extract_tags(blog_text, title)
+def add_tags(blog_text: str) -> str:
+    tags = extract_tags(blog_text)
     tags_line = " ".join(f"`#{t}`" for t in tags)
-
-    lines = blog_text.split('\n', 1)
-    heading = lines[0] if lines else f"# {title}"
-    rest = lines[1] if len(lines) > 1 else ""
-
-    metadata_block = (
-        f"{heading}\n\n"
-        f"**Author:** {AUTHOR_NAME}  \n"
-        f"**Reading time:** {reading_time} minute{'s' if reading_time != 1 else ''}\n"
-        f"{rest}\n\n"
-        f"**Tags:** {tags_line}"
-    )
-    return metadata_block
+    return f"{blog_text}\n\n**Tags:** {tags_line}"
 
 
 def save_blog(title: str, content: str) -> str:
@@ -154,28 +142,35 @@ def save_blog(title: str, content: str) -> str:
 
 def run() -> dict:
     print("[FETCHING] Looking for robotics news...")
-    article = fetch_one_article()
+    articles = fetch_three_articles()
 
-    if not article:
-        return {"success": False, "error": "No relevant articles found right now. Try again later."}
+    if len(articles) < 3:
+        return {"success": False, "error": "Not enough relevant articles found right now. Try again later."}
 
-    print(f"[GENERATING] {article['title']}")
-    blog_md = generate_blog(article["title"], article["summary"])
+    print(f"[GENERATING] Covering 3 stories: {', '.join(a['title'] for a in articles)}")
+    blog_md = generate_blog(articles)
 
     if not blog_md:
         return {"success": False, "error": "Blog generation failed. Try again."}
 
-    blog_md = add_metadata(blog_md, article["title"])
-    blog_md += f"\n\n---\n*Source: [{article['title']}]({article['link']})*"
+    blog_md = add_tags(blog_md)
 
-    path = save_blog(article["title"], blog_md)
+    sources_block = "\n\n---\n**Sources:**\n" + "\n".join(
+        f"- [{a['title']}]({a['link']})" for a in articles
+    )
+    blog_md += sources_block
+
+    first_line = blog_md.split('\n', 1)[0]
+    title_for_slug = first_line.replace('#', '').strip() or articles[0]["title"]
+
+    path = save_blog(title_for_slug, blog_md)
     print(f"[SAVED] {path}")
 
     return {
         "success": True,
-        "title": article["title"],
+        "title": title_for_slug,
         "content": blog_md,
-        "source_link": article["link"],
+        "source_link": articles[0]["link"],
         "file_path": path,
     }
 
