@@ -29,4 +29,4 @@ KEYWORDS = [
 ]
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_MODEL = "inclusionai/ling-3.0-flash:free"
+OPENROUTER_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free"
