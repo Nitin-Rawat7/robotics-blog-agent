@@ -15,24 +15,6 @@ client = OpenAI(
 
 RECENT_LOG = os.path.join(BLOG_DIR, "..", "recent_topics.json")
 
-CATEGORIES = {
-    "humanoid": ["humanoid", "bipedal", "android robot"],
-    "drone": ["drone", "uav", "aerial robot", "quadcopter"],
-    "industrial": ["industrial", "manufacturing", "warehouse", "factory", "cobot", "assembly line"],
-    "ai_hardware": ["isaac", "jetson", "omniverse", "nvidia", "gpu", "chip"],
-    "arm_gripper": ["robotic arm", "gripper", "manipulator", "actuator"],
-    "research": ["study", "paper", "researchers", "university"],
-}
-
-
-def classify_category(title: str, summary: str) -> str:
-    text = (title + " " + summary).lower()
-    for category, kws in CATEGORIES.items():
-        if any(kw in text for kw in kws):
-            return category
-    return "general"
-
-
 SELECTOR_PROMPT = """Below is a list of robotics news headlines with summaries.
 
 Pick the SINGLE most important, most newsworthy, most demanding-of-attention story — the one a serious robotics industry follower would care about most today. Ignore anything that is not core robotics/AI-hardware news (skip general AI, food-tech, unrelated software stories even if they mention "robot" in passing).
@@ -131,7 +113,7 @@ def is_relevant(entry) -> bool:
     return any(k.lower() in text for k in KEYWORDS)
 
 
-def load_recent() -> list[dict]:
+def load_recent() -> list[str]:
     if not os.path.exists(RECENT_LOG):
         return []
     with open(RECENT_LOG, "r", encoding="utf-8") as f:
@@ -141,34 +123,21 @@ def load_recent() -> list[dict]:
     for d in data:
         try:
             if datetime.fromisoformat(d["time"]) > cutoff:
-                result.append(d)
+                slug = d.get("slug") or slugify(d.get("title", ""))[:60]
+                result.append(slug)
         except (KeyError, ValueError):
             continue
     return result
 
 
-def get_recent_slugs(recent: list[dict]) -> list[str]:
-    return [d.get("slug") or slugify(d.get("title", ""))[:60] for d in recent]
-
-
-def get_recent_categories(recent: list[dict], limit: int = 3) -> list[str]:
-    sorted_recent = sorted(recent, key=lambda d: d["time"], reverse=True)
-    return [d.get("category", "general") for d in sorted_recent[:limit]]
-
-
-def save_recent(title: str, category: str) -> None:
+def save_recent(title: str) -> None:
     data = []
     if os.path.exists(RECENT_LOG):
         with open(RECENT_LOG, "r", encoding="utf-8") as f:
             data = json.load(f)
 
     slug = slugify(title)[:60]
-    data.append({
-        "title": title,
-        "slug": slug,
-        "category": category,
-        "time": datetime.utcnow().isoformat(),
-    })
+    data.append({"title": title, "slug": slug, "time": datetime.utcnow().isoformat()})
 
     cutoff = datetime.utcnow() - timedelta(days=7)
     cleaned = []
@@ -184,8 +153,7 @@ def save_recent(title: str, category: str) -> None:
 
 
 def fetch_candidates() -> list[dict]:
-    recent = load_recent()
-    recent_slugs = get_recent_slugs(recent)
+    recent_slugs = load_recent()
     candidates = []
 
     for url in RSS_SOURCES:
@@ -205,7 +173,6 @@ def fetch_candidates() -> list[dict]:
                     "title": title,
                     "summary": summary,
                     "link": entry.get("link", ""),
-                    "category": classify_category(title, summary),
                 })
 
     return candidates
@@ -215,16 +182,9 @@ def pick_most_important(candidates: list[dict]) -> dict:
     if len(candidates) == 1:
         return candidates[0]
 
-    recent = load_recent()
-    recent_categories = get_recent_categories(recent, limit=3)
-
-    # Prefer candidates whose category hasn't been covered in the last 3 posts
-    fresh_pool = [c for c in candidates if c["category"] not in recent_categories]
-    pool = fresh_pool if fresh_pool else candidates
-
     numbered_list = "\n\n".join(
-        f"{i+1}. [{c['category']}] {c['title']}\n{c['summary'][:200]}"
-        for i, c in enumerate(pool)
+        f"{i+1}. {c['title']}\n{c['summary'][:200]}"
+        for i, c in enumerate(candidates)
     )
     prompt = SELECTOR_PROMPT.format(numbered_list=numbered_list)
 
@@ -232,12 +192,12 @@ def pick_most_important(candidates: list[dict]) -> dict:
 
     try:
         idx = int(result.split()[0]) - 1
-        if 0 <= idx < len(pool):
-            return pool[idx]
+        if 0 <= idx < len(candidates):
+            return candidates[idx]
     except (ValueError, IndexError):
         pass
 
-    return pool[0]
+    return candidates[0]
 
 
 def generate_blog(title: str, summary: str, link: str) -> str:
@@ -277,8 +237,8 @@ def run() -> dict:
     print(f"[FOUND] {len(candidates)} candidates. Picking the most important...")
     article = pick_most_important(candidates)
 
-    print(f"[SELECTED] ({article['category']}) {article['title']}")
-    save_recent(article["title"], article["category"])
+    print(f"[SELECTED] {article['title']}")
+    save_recent(article["title"])
 
     print("[GENERATING] Writing humanized blog post...")
     blog_md = generate_blog(article["title"], article["summary"], article["link"])
