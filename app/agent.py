@@ -11,7 +11,7 @@ client = OpenAI(
     api_key=OPENROUTER_API_KEY,
 )
 
-AUTHOR_NAME = "Nitin"
+AUTHOR_NAME = "Robotic Sir"
 
 PROMPT_TEMPLATE = """You are writing a short, clear, tutorial-style blog post for a robotics blog, explaining a piece of news in simple, educational terms — the way a knowledgeable person explains a concept to someone curious but new to the topic.
 
