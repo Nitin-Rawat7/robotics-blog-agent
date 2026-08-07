@@ -19,15 +19,10 @@ SELECTOR_PROMPT = """Below is a list of robotics news headlines with summaries.
 
 Pick the SINGLE most important, most newsworthy, most demanding-of-attention story — the one a serious robotics industry follower would care about most today. Ignore anything that is not core robotics/AI-hardware news (skip general AI, food-tech, unrelated software stories even if they mention "robot" in passing).
 
-RECENTLY COVERED TOPICS (DO NOT PICK ANYTHING SIMILAR):
-{recent_topics}
-
 CANDIDATE STORIES:
 {numbered_list}
 
 Respond with ONLY the number of your pick. No explanation.
-
-{numbered_list}
 """
 
 PROMPT_TEMPLATE = """You are a robotics journalist writing a blog post. You've covered this beat for years, you have opinions, and you write the way a real person types when they're not overthinking it.
@@ -118,28 +113,42 @@ def load_recent() -> list[str]:
         return []
     with open(RECENT_LOG, "r", encoding="utf-8") as f:
         data = json.load(f)
-    # Keep 7 days of history instead of 24 hours
     cutoff = datetime.utcnow() - timedelta(days=7)
-    return [d["slug"] for d in data if datetime.fromisoformat(d["time"]) > cutoff]
+    result = []
+    for d in data:
+        try:
+            if datetime.fromisoformat(d["time"]) > cutoff:
+                slug = d.get("slug") or slugify(d.get("title", ""))[:60]
+                result.append(slug)
+        except (KeyError, ValueError):
+            continue
+    return result
+
 
 def save_recent(title: str) -> None:
     data = []
     if os.path.exists(RECENT_LOG):
         with open(RECENT_LOG, "r", encoding="utf-8") as f:
             data = json.load(f)
-    
+
     slug = slugify(title)[:60]
     data.append({"title": title, "slug": slug, "time": datetime.utcnow().isoformat()})
-    
+
     cutoff = datetime.utcnow() - timedelta(days=7)
-    data = [d for d in data if datetime.fromisoformat(d["time"]) > cutoff]
-    
+    cleaned = []
+    for d in data:
+        try:
+            if datetime.fromisoformat(d["time"]) > cutoff:
+                cleaned.append(d)
+        except (KeyError, ValueError):
+            continue
+
     with open(RECENT_LOG, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+        json.dump(cleaned, f, indent=2)
 
 
 def fetch_candidates() -> list[dict]:
-    recent = load_recent()
+    recent_slugs = load_recent()
     candidates = []
 
     for url in RSS_SOURCES:
@@ -153,7 +162,8 @@ def fetch_candidates() -> list[dict]:
             title = entry.get("title", "")
             raw_summary = entry.get("summary", "")
             summary = strip_html(raw_summary)
-            if is_relevant(entry) and title not in recent:
+            title_slug = slugify(title)[:60]
+            if is_relevant(entry) and title_slug not in recent_slugs:
                 candidates.append({
                     "title": title,
                     "summary": summary,
