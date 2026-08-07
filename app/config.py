@@ -11,10 +11,9 @@ BLOG_DIR = os.path.join(DATA_DIR, "blogs")
 RSS_SOURCES = [
     "https://spectrum.ieee.org/feeds/topic/robotics.rss",
     "https://www.therobotreport.com/feed/",
-    "http://export.arxiv.org/rss/cs.RO",
     "https://techcrunch.com/tag/robotics/feed/",
     "https://blogs.nvidia.com/feed/",
-    "https://www.robotics247.com/rss.xml",   # VERIFY this URL works before relying on it
+    "https://roboticsandautomationnews.com/feed/",
 ]
 
 KEYWORDS = [
@@ -30,4 +29,4 @@ KEYWORDS = [
 ]
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_MODEL = "Poolside: Laguna S 2.1 (free)"
+OPENROUTER_MODEL = "inclusionai/ling-3.0-flash:free"
