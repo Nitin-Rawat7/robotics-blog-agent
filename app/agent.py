@@ -56,6 +56,9 @@ CONTENT RULES:
 - Add real context: competitors, history, past attempts at similar things, what usually goes wrong or right in situations like this
 - Never mention you're an AI or that this is generated
 
+CRITICAL FORMATTING REMINDER — DO NOT SKIP THIS:
+Every single section (Opening, each story section, Your Take, Key Takeaways, What Comes Next) MUST be its own separate paragraph or set of short paragraphs, separated by blank lines. NEVER merge multiple sections or ideas into one giant paragraph. Keep paragraphs SHORT — 2 to 4 sentences maximum each. If you notice yourself writing a long unbroken block of text, STOP and break it into a new paragraph immediately. The ## subheadings must appear before each new section — do not drop them partway through the post.
+
 Output format: Markdown.
 """
 
@@ -65,6 +68,30 @@ def strip_html(text: str) -> str:
     clean = re.sub(r'\s+', ' ', clean)
     return clean.strip()
 
+def enforce_paragraph_breaks(text: str, max_sentences_per_para: int = 4) -> str:
+    lines = text.split('\n')
+    fixed_lines = []
+
+    for line in lines:
+        stripped = line.strip()
+        # Leave headings, bullets, and short lines alone
+        if stripped.startswith('#') or stripped.startswith('-') or stripped.startswith('*') or len(stripped) < 200:
+            fixed_lines.append(line)
+            continue
+
+        # Break long unbroken paragraphs at sentence boundaries
+        sentences = re.split(r'(?<=[.!?])\s+', stripped)
+        chunk = []
+        for i, sentence in enumerate(sentences):
+            chunk.append(sentence)
+            if len(chunk) >= max_sentences_per_para:
+                fixed_lines.append(' '.join(chunk))
+                fixed_lines.append('')
+                chunk = []
+        if chunk:
+            fixed_lines.append(' '.join(chunk))
+
+    return '\n'.join(fixed_lines)
 
 def has_excessive_repetition(text: str, threshold: int = 3) -> bool:
     lines = [l.strip() for l in text.split('\n') if l.strip()]
@@ -213,6 +240,8 @@ def generate_blog(title: str, summary: str, link: str) -> str:
             f"unavailable or rate-limited. Here's what the story is about:\n\n"
             f"{summary}"
         )
+    else:
+        blog_text = enforce_paragraph_breaks(blog_text)
 
     blog_text += f"\n\n---\n*Source: [{title}]({link})*"
     return blog_text
